@@ -16,42 +16,111 @@ resource "aws_s3_bucket" "akbackend" {
 #   bucket = "aktk"
 #   acl    = "private"
 #   }
-
-resource "aws_cloudfront_distribution" "ak" {
+resource "aws_cloudfront_distribution" "ashis" {
   origin {
-    domain_name = aws_s3_bucket.default.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.default.id}"
+    domain_name = "aws_s3_bucket.aktk.https://d28ltohlixkpbu.cloudfront.net"
+    origin_id   = "aktk.s3.ap-south-1.amazonaws.com"
 
     s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.default.cloudfront_access_identity_path
+      origin_access_identity = "origin-access-identity/cloudfront/E3UTFGUW2TQQJJ"
     }
   }
+
+  depends_on = [
+    aws_cloudfront_distribution.ashis
+  ]
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "Some comment"
+  default_root_object = "index.html"
+
+  logging_config {
+    include_cookies = false
+    bucket          = "aktk.s3.amazonaws.com"
+    prefix          = "myprefix"
+  }
+
+  aliases = ["https://d28ltohlixkpbu.cloudfront.net"]
+
+  default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "aktk.s3.ap-south-1.amazonaws.com"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "allow-all"
+    min_ttl                = 0
+    default_ttl            = 5
+    max_ttl                = 10
+  }
+
+  # Cache behavior with precedence 0
+  ordered_cache_behavior {
+    path_pattern     = "/content/immutable/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id = "aktk.s3.ap-south-1.amazonaws.com"
+
+    forwarded_values {
+      query_string = false
+      headers      = ["Origin"]
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl                = 0
+    default_ttl            = 5
+    max_ttl                = 10
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  # Cache behavior with precedence 1
+  ordered_cache_behavior {
+    path_pattern     = "/content/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "aktk.s3.ap-south-1.amazonaws.com"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl                = 0
+    default_ttl            = 5
+    max_ttl                = 10
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  price_class = "PriceClass_200"
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "whitelist"
+      locations        = ["US", "CA", "GB", "DE"]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
 }
-# enabled             = true
-# is_ipv6_enabled     = false
-# default_root_object = "index.html"
-
-# aliases = [var.bucket_name]
-
-# default_cache_behavior {
-#  allowed_methods  = ["GET", "HEAD"]
-#  cached_methods   = ["GET", "HEAD"]
-#  target_origin_id = "S3-${aws_s3_bucket.default.id}"
-
-#  forwarded_values {
-#    query_string = false
-#
-#    cookies {
-#      forward = "none"
-#    }
-#  }
-#  viewer_protocol_policy = "redirect-to-https"
-#  min_ttl                = 0
-#  default_ttl            = 0
-#  max_ttl                = 0
-
-#  lambda_function_association {
-#    event_type   = "origin-request"
-#    include_body = false
-#    lambda_arn   = "arn:aws:lambda:us-east-1:225237029829:function:s3-cdn:2"
-#  }
